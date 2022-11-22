@@ -11,6 +11,7 @@ import pickle
 from colorama import Fore, Style
 
 from tensorflow.keras import Model, models
+from google.cloud import storage
 
 
 def save_model(model: Model = None,
@@ -22,26 +23,25 @@ def save_model(model: Model = None,
 
     timestamp = time.strftime("%Y%m%d-%H%M%S")
 
-    if os.environ.get("MODEL_TARGET") == "mlflow":
+    if os.environ.get("MODEL_TARGET") == "gcs":
 
-        # retrieve mlflow env params
-        pass  # YOUR CODE HERE
+        if model:
 
-        # configure mlflow
-        pass  # YOUR CODE HERE
+            model_path = os.path.join(os.environ.get("LOCAL_REGISTRY_PATH"), "models",
+                                    timestamp + ".pickle")
 
-        with mlflow.start_run():
+            model.save(model_path)
 
-            # STEP 1: push parameters to mlflow
-            pass  # YOUR CODE HERE
+            # list model files
+            files = glob.glob(f"{model_path}/**/*.*", recursive=True)
 
-            # STEP 2: push metrics to mlflow
-            pass  # YOUR CODE HERE
+            for file in files:
+                storage_filename = file[17:]
 
-            # STEP 3: push model to mlflow
-            pass  # YOUR CODE HERE
-
-        return None
+                client = storage.Client()
+                bucket = client.bucket(os.environ["BUCKET_NAME"])
+                blob = bucket.blob(storage_filename)
+                blob.upload_from_filename(file)
 
     print(Fore.BLUE + "\nSave model to local disk..." + Style.RESET_ALL)
 
